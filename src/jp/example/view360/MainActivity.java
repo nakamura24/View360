@@ -22,7 +22,7 @@ import android.os.Bundle;
 import android.util.Log;
 import android.widget.ImageView;
 
-public class MainActivity extends Activity implements SensorEventListener {
+public class MainActivity extends Activity {
 	private static String Tag = "MainActivity";
 	private static int MATRIX_SIZE = 16;
 	private static int DIMENSION = 3;
@@ -63,7 +63,7 @@ public class MainActivity extends Activity implements SensorEventListener {
 			// センサマネージャへリスナーを登録
 			if (sensorsMF.size() > 0) {
 				Sensor sensor = sensorsMF.get(0);
-				mSensorManager.registerListener(this, sensor,
+				mSensorManager.registerListener(onSensorEventListener, sensor,
 						SensorManager.SENSOR_DELAY_NORMAL);
 			}
 
@@ -74,7 +74,7 @@ public class MainActivity extends Activity implements SensorEventListener {
 			// センサマネージャへリスナーを登録
 			if (sensorsAcc.size() > 0) {
 				Sensor sensor = sensorsAcc.get(0);
-				mSensorManager.registerListener(this, sensor,
+				mSensorManager.registerListener(onSensorEventListener, sensor,
 						SensorManager.SENSOR_DELAY_NORMAL);
 			}
 		} catch (Exception e) {
@@ -96,7 +96,8 @@ public class MainActivity extends Activity implements SensorEventListener {
 			// センサマネージャへリスナーを登録
 			if (sensorsMF.size() > 0) {
 				Sensor sensor = sensorsMF.get(0);
-				mSensorManager.unregisterListener(this, sensor);
+				mSensorManager
+						.unregisterListener(onSensorEventListener, sensor);
 			}
 
 			// 加速度センサー
@@ -106,71 +107,75 @@ public class MainActivity extends Activity implements SensorEventListener {
 			// センサマネージャへリスナーを登録
 			if (sensorsAcc.size() > 0) {
 				Sensor sensor = sensorsAcc.get(0);
-				mSensorManager.unregisterListener(this, sensor);
+				mSensorManager
+						.unregisterListener(onSensorEventListener, sensor);
 			}
 		} catch (Exception e) {
 			Log.e(Tag, e.getMessage());
 		}
 	}
 
-	@Override
-	public void onAccuracyChanged(Sensor sensor, int accuracy) {
-		Log.i(Tag, "onAccuracyChanged");
-		// センサーの精度が変更されると呼ばれる
-	}
-
-	@Override
-	public void onSensorChanged(SensorEvent event) {
-		// Log.i(Tag, "onSensorChanged");
-		try {
-			// センサーの値が変化すると呼ばれる
-			switch (event.sensor.getType()) {
-			case Sensor.TYPE_MAGNETIC_FIELD: // 地磁気センサ
-				mMagneticValues = event.values.clone();
-				break;
-			case Sensor.TYPE_ACCELEROMETER: // 加速度センサ
-				mAccelerometerValues = event.values.clone();
-				break;
-			}
-
-			if (mMagneticValues != null && mAccelerometerValues != null) {
-				float[] rotationMatrix = new float[MATRIX_SIZE];
-				float[] inclinationMatrix = new float[MATRIX_SIZE];
-				float[] remapedMatrix = new float[MATRIX_SIZE];
-
-				float[] orientationValues = new float[DIMENSION];
-
-				// 加速度センサと地磁気センサから回転行列を取得
-				SensorManager.getRotationMatrix(rotationMatrix,
-						inclinationMatrix, mAccelerometerValues,
-						mMagneticValues);
-				SensorManager.remapCoordinateSystem(rotationMatrix,
-						SensorManager.AXIS_X, SensorManager.AXIS_Z,
-						remapedMatrix);
-				SensorManager.getOrientation(remapedMatrix, orientationValues);
-				// 求まった方位角．ラジアンなので度に変換する
-				float orientDegree = (float) Math
-						.toDegrees(orientationValues[0]);
-				Log.d(Tag, "orientDegree=" + orientDegree);
-				viewChange(orientDegree);
-			}
-		} catch (Exception e) {
-			Log.e(Tag, e.getMessage());
+	private final SensorEventListener onSensorEventListener = new SensorEventListener() {
+		@Override
+		public void onAccuracyChanged(Sensor sensor, int accuracy) {
+			Log.i(Tag, "onAccuracyChanged");
+			// センサーの精度が変更されると呼ばれる
 		}
-	}
 
-	private void viewChange(float orientDegree) {
-		Log.i(Tag, "viewChange");
-		try {
-			float width = (float) mBitmapImage.getWidth() / WIDTH_ANGLE;
-			int left = (int) ((180 + orientDegree - VIEW_ANGLE) * width);
-			int right = (int) ((180 + orientDegree + VIEW_ANGLE) * width);
-			Bitmap newBitmapImage = Bitmap.createBitmap(mBitmapImage, left, 0,
-					right - left, mBitmapImage.getHeight());
-			ImageView imageView = (ImageView) findViewById(R.id.imageView1);
-			imageView.setImageBitmap(newBitmapImage);
-		} catch (Exception e) {
-			Log.e(Tag, e.getMessage());
+		@Override
+		public void onSensorChanged(SensorEvent event) {
+			// Log.i(Tag, "onSensorChanged");
+			try {
+				// センサーの値が変化すると呼ばれる
+				switch (event.sensor.getType()) {
+				case Sensor.TYPE_MAGNETIC_FIELD: // 地磁気センサ
+					mMagneticValues = event.values.clone();
+					break;
+				case Sensor.TYPE_ACCELEROMETER: // 加速度センサ
+					mAccelerometerValues = event.values.clone();
+					break;
+				}
+
+				if (mMagneticValues != null && mAccelerometerValues != null) {
+					float[] rotationMatrix = new float[MATRIX_SIZE];
+					float[] inclinationMatrix = new float[MATRIX_SIZE];
+					float[] remapedMatrix = new float[MATRIX_SIZE];
+
+					float[] orientationValues = new float[DIMENSION];
+
+					// 加速度センサと地磁気センサから回転行列を取得
+					SensorManager.getRotationMatrix(rotationMatrix,
+							inclinationMatrix, mAccelerometerValues,
+							mMagneticValues);
+					SensorManager.remapCoordinateSystem(rotationMatrix,
+							SensorManager.AXIS_X, SensorManager.AXIS_Z,
+							remapedMatrix);
+					SensorManager.getOrientation(remapedMatrix,
+							orientationValues);
+					// 求まった方位角．ラジアンなので度に変換する
+					float orientDegree = (float) Math
+							.toDegrees(orientationValues[0]);
+					Log.d(Tag, "orientDegree=" + orientDegree);
+					viewChange(orientDegree);
+				}
+			} catch (Exception e) {
+				Log.e(Tag, e.getMessage());
+			}
 		}
-	}
+
+		private void viewChange(float orientDegree) {
+			Log.i(Tag, "viewChange");
+			try {
+				float width = (float) mBitmapImage.getWidth() / WIDTH_ANGLE;
+				int left = (int) ((180 + orientDegree - VIEW_ANGLE) * width);
+				int right = (int) ((180 + orientDegree + VIEW_ANGLE) * width);
+				Bitmap newBitmapImage = Bitmap.createBitmap(mBitmapImage, left,
+						0, right - left, mBitmapImage.getHeight());
+				ImageView imageView = (ImageView) findViewById(R.id.imageView1);
+				imageView.setImageBitmap(newBitmapImage);
+			} catch (Exception e) {
+				Log.e(Tag, e.getMessage());
+			}
+		}
+	};
 }
